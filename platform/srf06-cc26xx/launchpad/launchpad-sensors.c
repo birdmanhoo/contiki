@@ -38,10 +38,11 @@
 /*---------------------------------------------------------------------------*/
 #include "contiki.h"
 #include "launchpad/button-sensor.h"
+#include "launchpad/pir-sensor.h"
 
 #include <string.h>
 /*---------------------------------------------------------------------------*/
 /** \brief Exports a global symbol to be used by the sensor API */
-SENSORS(&button_left_sensor, &button_right_sensor);
+SENSORS(&button_left_sensor, &button_right_sensor, &pir_sensor);
 /*---------------------------------------------------------------------------*/
 /** @} */

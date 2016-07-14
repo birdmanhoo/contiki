@@ -130,6 +130,7 @@ static char app_buffer[APP_BUFFER_SIZE];
 #define QUICKSTART "quickstart"
 /*---------------------------------------------------------------------------*/
 static struct mqtt_message *msg_ptr = 0;
+
 static struct etimer publish_periodic_timer;
 static struct ctimer ct;
 static char *buf_ptr;
@@ -623,6 +624,8 @@ subscribe(void)
 static void
 publish(void)
 {
+    get_pir_motion();
+    
   /* Publish MQTT topic in IBM quickstart format */
   int len;
   int remaining = APP_BUFFER_SIZE;

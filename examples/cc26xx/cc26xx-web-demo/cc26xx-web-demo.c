@@ -85,8 +85,10 @@ PROCESS(cc26xx_web_demo_process, "CC26XX Web Demo");
 #define SENSOR_READING_RANDOM (CLOCK_SECOND << 4)
 
 
-// declare a callback timer batmon_timer and PIR timer
-struct ctimer batmon_timer, pir_timer;
+// declare a callback timer batmon_timer 
+struct ctimer batmon_timer;
+// PIR timer
+struct ctimer pir_timer;
 
 // global motion event counter
 int motion_event_count = 0;
@@ -519,14 +521,14 @@ get_batmon_reading(void *data)
 
 // Function for publishing PIR motion events per CLOCK MINUTE  
 
-static void
+void
 get_pir_motion()
 {
     int value;
     char *buf;
 //  SENSOR_READING_PERIOD = (CLOCK_SECOND * 20) 
 // 20 seconds times 3 = 1 minute
-    clock_time_t next = SENSOR_READING_PERIOD * 3;
+//    clock_time_t next = SENSOR_READING_PERIOD * 3;
     
     if(pir_motion_reading.publish) {
     value = motion_event_count;
@@ -544,7 +546,7 @@ get_pir_motion()
     }
   }
   
-  ctimer_set(&pir_timer, next, get_pir_motion, NULL);
+ // ctimer_set(pir_timer, conf->pub_interval, get_pir_motion, NULL);
 
 }
 
@@ -894,7 +896,7 @@ init_sensor_readings(void)
    */
   get_batmon_reading(NULL);
 
-  get_pir_motion(NULL); 
+  get_pir_motion(); 
 
 
 #if BOARD_SENSORTAG

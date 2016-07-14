@@ -167,7 +167,7 @@ extern process_event_t cc26xx_web_demo_load_config_defaults;
 #define CC26XX_WEB_DEMO_UNIT_ACC      "G"
 #define CC26XX_WEB_DEMO_UNIT_GYRO     "deg per sec"
 // A unit of measure added for PIR motion
-#define CC26XX_WEB_DEMO_UNIT_PIR     "events/min"
+#define CC26XX_WEB_DEMO_UNIT_PIR     "events"
 
 /*---------------------------------------------------------------------------*/
 /* A data type for sensor readings, internally stored in a linked list */
@@ -230,6 +230,10 @@ int cc26xx_web_demo_ipaddr_sprintf(char *buf, uint8_t buf_len,
  * \brief Resets the example to a default configuration
  */
 void cc26xx_web_demo_restore_defaults(void);
+
+// put this here so that the MQTT publish interval timer can call get_pir_motion
+// before it publishes to MQTT
+void get_pir_motion(void);
 /*---------------------------------------------------------------------------*/
 #endif /* CC26XX_WEB_DEMO_H_ */
 /*---------------------------------------------------------------------------*/

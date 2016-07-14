@@ -101,6 +101,12 @@
 /* Force an MQTT publish on sensor event */
 #define CC26XX_WEB_DEMO_MQTT_PUBLISH_TRIGGER &reed_relay_sensor
 #elif BOARD_LAUNCHPAD
+//
+//
+// Add a trigger for a PIR motion event
+ #define CC26XX_WEB_DEMO_PIR_SENSOR_TRIGGER &pir_sensor
+//
+//
 #define CC26XX_WEB_DEMO_MQTT_PUBLISH_TRIGGER &button_left_sensor
 #else
 #define CC26XX_WEB_DEMO_MQTT_PUBLISH_TRIGGER &button_down_sensor
@@ -146,6 +152,8 @@
 #define CC26XX_WEB_DEMO_SENSOR_MPU_GYRO_X    12
 #define CC26XX_WEB_DEMO_SENSOR_MPU_GYRO_Y    13
 #define CC26XX_WEB_DEMO_SENSOR_MPU_GYRO_Z    14
+// add a new sensor type for the PIR sensor
+#define CC26XX_WEB_DEMO_SENSOR_PIR           15
 /*---------------------------------------------------------------------------*/
 extern process_event_t cc26xx_web_demo_publish_event;
 extern process_event_t cc26xx_web_demo_config_loaded_event;
@@ -158,6 +166,9 @@ extern process_event_t cc26xx_web_demo_load_config_defaults;
 #define CC26XX_WEB_DEMO_UNIT_LIGHT    "lux"
 #define CC26XX_WEB_DEMO_UNIT_ACC      "G"
 #define CC26XX_WEB_DEMO_UNIT_GYRO     "deg per sec"
+// A unit of measure added for PIR motion
+#define CC26XX_WEB_DEMO_UNIT_PIR     "events/min"
+
 /*---------------------------------------------------------------------------*/
 /* A data type for sensor readings, internally stored in a linked list */
 #define CC26XX_WEB_DEMO_CONVERTED_LEN        12
@@ -185,6 +196,7 @@ typedef struct cc26xx_web_demo_config_s {
   mqtt_client_config_t mqtt_config;
   net_uart_config_t net_uart;
 } cc26xx_web_demo_config_t;
+
 
 extern cc26xx_web_demo_config_t cc26xx_web_demo_config;
 /*---------------------------------------------------------------------------*/

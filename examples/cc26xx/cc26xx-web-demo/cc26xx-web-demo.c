@@ -49,76 +49,53 @@
 #include "net/ipv6/sicslowpan.h"
 #include "button-sensor.h"
 #include "pir-sensor.h"
+#include "dev/adc-sensor.h"
 #include "batmon-sensor.h"
 #include "httpd-simple.h"
 #include "cc26xx-web-demo.h"
 #include "mqtt-client.h"
 #include "coap-server.h"
+#include "net-uart.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 /*---------------------------------------------------------------------------*/
 
-// Process Name macro for 6lbr?
 PROCESS_NAME(cetic_6lbr_client_process);
 
-// Every process in Contiki should start with the PROCESS macro. It takes two arguments
-// name: The variable name of the process structure.
-// strname: The string representation of the process name.
-//  PROCESS(name,strname) 
 PROCESS(cc26xx_web_demo_process, "CC26XX Web Demo");
-/*---------------------------------------------------------------------------*/
-/*
- * Update sensor readings in a staggered fashion every SENSOR_READING_PERIOD
- * ticks + a random interval between 0 and SENSOR_READING_RANDOM ticks
- */
- // CLOCK_SECOND A second, measured in system clock time
- // The clock library is the interface between Contiki and the platform specific clock functionality. 
- // The clock library defines a macro, CLOCK_SECOND, to convert seconds into the tick resolution of the platform. Typically this is 1-10 milliseconds, e.g. 4*CLOCK_SECOND could be 512. A 16 bit counter would 
- // thus overflow every 1-10 minutes. Platforms may also implement rtimers for greater time resolution and for real-time interrupts, These use a corresponding RTIMER_SECOND.
 
 #define SENSOR_READING_PERIOD (CLOCK_SECOND * 20)
 
-
-// bit shift left by 4 
 #define SENSOR_READING_RANDOM (CLOCK_SECOND << 4)
 
-
-// declare a callback timer batmon_timer 
 struct ctimer batmon_timer;
-// PIR timer
-struct ctimer pir_timer;
 
-// global motion event counter
 int motion_event_count = 0;
 
 #if BOARD_SENSORTAG
-// declare a bunch of other callback timers
+
 struct ctimer bmp_timer, hdc_timer, tmp_timer, opt_timer, mpu_timer;
 #endif
 /*---------------------------------------------------------------------------*/
 /* Provide visible feedback via LEDS while searching for a network */
-// Note need to find where CC26XX_WEB_DEMO_NET_CONNECT_PERIODIC is defined
-#define NO_NET_LED_DURATION        (CC26XX_WEB_DEMO_NET_CONNECT_PERIODIC >> 1)
 
-// static struct
-//when applied to a variable declared outside a function, or to a function, the visibility of that variable or function is limited to the "translation unit" it's declared in - ie the file itself. For 
-// variables this boils down to a kind of "locally visible global variable".
+#define NO_NET_LED_DURATION        (CC26XX_WEB_DEMO_NET_CONNECT_PERIODIC >> 1)
 
 static struct etimer et;
 static struct ctimer ct;
 /*---------------------------------------------------------------------------*/
 /* Parent RSSI functionality */
 #if CC26XX_WEB_DEMO_READ_PARENT_RSSI
-// need to find where this struct is defined 
+
 static struct uip_icmp6_echo_reply_notification echo_reply_notification;
-// event timer 
+
 static struct etimer echo_request_timer;
 int def_rt_rssi = 0;
 #endif
 /*---------------------------------------------------------------------------*/
-// typedef unsigned char process_event_t
 process_event_t cc26xx_web_demo_publish_event;
 process_event_t cc26xx_web_demo_config_loaded_event;
 process_event_t cc26xx_web_demo_load_config_defaults;
@@ -136,8 +113,6 @@ typedef struct cc26xx_web_demo_config_s { uint32_t magic;  int len; uint32_t sen
 cc26xx_web_demo_config_t cc26xx_web_demo_config;
 /*---------------------------------------------------------------------------*/
 /* A cache of sensor values. Updated periodically or upon key press */
-// Linked lists are declared with the LIST() macro. The declaration specifies
-// the name of the list that later is used with all list functions.
 
 LIST(sensor_list);
 /*---------------------------------------------------------------------------*/
@@ -154,12 +129,17 @@ DEMO_SENSOR(batmon_volt, CC26XX_WEB_DEMO_SENSOR_BATMON_VOLT,
             "Battery Volt", "battery-volt", "batmon_volt",
             CC26XX_WEB_DEMO_UNIT_VOLT);
             
-            
-// Another DEMO_SENSOR for PIR
 DEMO_SENSOR(pir_motion, CC26XX_WEB_DEMO_SENSOR_PIR, 
             "PIR Motion", "pir_motion", "pir_motion", 
             CC26XX_WEB_DEMO_UNIT_PIR);
+           
+DEMO_SENSOR(adc_sensor, CC26XX_WEB_DEMO_SENSOR_ADC, 
+            "Light", "light", "light", 
+            CC26XX_WEB_DEMO_UNIT_LIGHT);
 
+DEMO_SENSOR(uart_sensor, CC26XX_WEB_DEMO_SENSOR_UART, 
+            "UART", "uart", "uart", 
+            CC26XX_WEB_DEMO_UNIT_UART);
 
 /* Sensortag sensors */
 #if BOARD_SENSORTAG
@@ -519,38 +499,53 @@ get_batmon_reading(void *data)
   ctimer_set(&batmon_timer, next, get_batmon_reading, NULL);
 }
 
-// Function for publishing PIR motion events per CLOCK MINUTE  
-
 void
 get_pir_motion()
 {
     int value;
     char *buf;
-//  SENSOR_READING_PERIOD = (CLOCK_SECOND * 20) 
-// 20 seconds times 3 = 1 minute
-//    clock_time_t next = SENSOR_READING_PERIOD * 3;
-    
+ 
     if(pir_motion_reading.publish) {
     value = motion_event_count;
     motion_event_count = 0;
     if(value != CC26XX_SENSOR_READING_ERROR) {
         pir_motion_reading.raw = value;
         
-// .converted = char converted[CC26XX_WEB_DEMO_CONVERTED_LEN];
+
         buf = pir_motion_reading.converted;
         
-// set buf = 0. function fills the block of memory using the unsigned char conversion of this value.     
       memset(buf, 0, CC26XX_WEB_DEMO_CONVERTED_LEN);
-// essentially *buf which points to pir_sensor_reading.converted = value      
       snprintf(buf, CC26XX_WEB_DEMO_CONVERTED_LEN, "%d", value);
     }
   }
-  
- // ctimer_set(pir_timer, conf->pub_interval, get_pir_motion, NULL);
-
 }
 
+void
+get_adc_reading()
+{
+  int value = 0;
+  char *buf;
 
+  if(adc_sensor_reading.publish) {
+  value = adc_sensor.value(ADC_SENSOR_VALUE);
+  adc_sensor_reading.raw = value;
+  
+  buf = adc_sensor_reading.converted;
+  memset(buf, 0, CC26XX_WEB_DEMO_CONVERTED_LEN);
+  snprintf(buf, CC26XX_WEB_DEMO_CONVERTED_LEN, "%d", value);
+  }
+}
+
+void
+get_uart_reading()
+{
+  char *buf;
+  
+  buf = uart_sensor_reading.converted;
+  memset(buf, 0, CC26XX_WEB_DEMO_CONVERTED_LEN);
+  snprintf(buf, CC26XX_WEB_DEMO_CONVERTED_LEN, "%s", uart_reading_value);
+
+}
 
 /*---------------------------------------------------------------------------*/
 #if BOARD_SENSORTAG
@@ -897,6 +892,8 @@ init_sensor_readings(void)
   get_batmon_reading(NULL);
 
   get_pir_motion(); 
+  
+  get_adc_reading(); 
 
 
 #if BOARD_SENSORTAG
@@ -916,13 +913,14 @@ init_sensors(void)
 
   list_add(sensor_list, &batmon_temp_reading);
   list_add(sensor_list, &batmon_volt_reading);
-  //
-  // Add PIR motion to the sensor list here
-  //
-  //
+  list_add(sensor_list, &uart_sensor_reading);
+
   list_add(sensor_list, &pir_motion_reading);
+  list_add(sensor_list, &adc_sensor_reading);
+  list_add(sensor_list, &uart_sensor_reading);
   
   SENSORS_ACTIVATE(batmon_sensor);
+  SENSORS_ACTIVATE(adc_sensor);
 
 #if BOARD_SENSORTAG
   list_add(sensor_list, &bmp_pres_reading);
@@ -955,8 +953,6 @@ PROCESS_THREAD(cc26xx_web_demo_process, ev, data)
 
   init_sensors();
 
-
-// process_alloc_event allocates a global event number. 
   cc26xx_web_demo_publish_event = process_alloc_event();
   cc26xx_web_demo_config_loaded_event = process_alloc_event();
   cc26xx_web_demo_load_config_defaults = process_alloc_event();
@@ -1033,16 +1029,12 @@ PROCESS_THREAD(cc26xx_web_demo_process, ev, data)
       }
     }
 #endif
-// Note CC26XX_WEB_DEMO_SENSOR_READING_TRIGGER = &button_left_sensor
     if(ev == sensors_event && data == CC26XX_WEB_DEMO_SENSOR_READING_TRIGGER) {
       if((CC26XX_WEB_DEMO_SENSOR_READING_TRIGGER)->value(
            BUTTON_SENSOR_VALUE_DURATION) > CLOCK_SECOND * 5) {
         printf("Restoring defaults!\n");
         cc26xx_web_demo_restore_defaults();
       } else {
-// for the launchpad this just calls get_batmon_reading
-// This will also call get_pir_motion for the first time which will initialize
-// the callback timer to call the pir_motion function every minute
         init_sensor_readings();
 
  /* Asynchronous events are posted with the process_post() function.  
@@ -1051,20 +1043,15 @@ PROCESS_THREAD(cc26xx_web_demo_process, ev, data)
   * If not, the function returns an error. If there is room for the event on the queue, 
   * the function inserts the event at the end of the event queue and returns. 
   */
-// cc26xx_web_demo_publish_event is contained in mqtt-client.c
-// This calls the mqtt-client state_machine(); function which should then 
-// call the publish(); function
 
         process_post(PROCESS_BROADCAST, cc26xx_web_demo_publish_event, NULL);
       }
       
     } else if (ev == sensors_event && data == CC26XX_WEB_DEMO_PIR_SENSOR_TRIGGER) {
-        // If we get a motion event increment the motion event counter
         motion_event_count = motion_event_count + 1;
         
     }
-    // 
-    
+
     else if(ev == httpd_simple_event_new_config) {
       save_config();
 #if BOARD_SENSORTAG

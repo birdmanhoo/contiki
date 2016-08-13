@@ -39,7 +39,6 @@
 #include "contiki.h"
 #include "launchpad/button-sensor.h"
 #include "launchpad/pir-sensor.h"
-
 #include <string.h>
 /*---------------------------------------------------------------------------*/
 /** \brief Exports a global symbol to be used by the sensor API */

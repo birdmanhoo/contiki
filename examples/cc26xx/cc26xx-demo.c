@@ -90,6 +90,7 @@
 #include "sys/ctimer.h"
 #include "dev/leds.h"
 #include "dev/watchdog.h"
+#include "dev/adc-sensor.h"
 #include "random.h"
 #include "button-sensor.h"
 #include "pir-sensor.h"
@@ -120,6 +121,7 @@
 #define CC26XX_DEMO_SENSOR_3     CC26XX_DEMO_SENSOR_NONE
 #define CC26XX_DEMO_SENSOR_4     CC26XX_DEMO_SENSOR_NONE
 #define CC26XX_DEMO_SENSOR_5     CC26XX_DEMO_SENSOR_NONE
+
 #define CC26XX_DEMO_SENSOR_6     &pir_sensor
 #else
 #define CC26XX_DEMO_SENSOR_3     &button_up_sensor
@@ -129,19 +131,24 @@
 /*---------------------------------------------------------------------------*/
 static struct etimer et;
 /*---------------------------------------------------------------------------*/
-// Every process in Contiki should start with the PROCESS macro. It takes two arguments
-// name: The variable name of the process structure.
-// strname: The string representation of the process name.
-//  PROCESS(name,strname) 
+
 PROCESS(cc26xx_demo_process, "cc26xx demo process");
 
-// Then comes another macro AUTOSTART_PROCESS(struct process &). AUTOSTART_PROCESSES automatically starts the process(es) given in the argument(s) when the module boots.
-// &name: Reference to the process name.
-//  AUTOSTART_PROCESS(struct process &) 
 AUTOSTART_PROCESSES(&cc26xx_demo_process);
 
 /*---------------------------------------------------------------------------*/
-#if BOARD_SENSORTAG
+#if BOARD_LAUNCHPAD
+/*---------------------------------------------------------------------------*/
+
+// activate the adc
+static void
+init_adc_reading(void *not_used)
+{
+  SENSORS_ACTIVATE(adc_sensor);
+}
+
+/*---------------------------------------------------------------------------*/
+#elif BOARD_SENSORTAG
 /*---------------------------------------------------------------------------*/
 /*
  * Update sensor readings in a staggered fashion every SENSOR_READING_PERIOD
@@ -158,7 +165,7 @@ static void init_hdc_reading(void *not_used);
 static void init_tmp_reading(void *not_used);
 static void init_mpu_reading(void *not_used);
 /*---------------------------------------------------------------------------*/
-// do some math and conversion on what the gyro and accel get
+
 static void
 print_mpu_reading(int reading)
 {
@@ -170,13 +177,13 @@ print_mpu_reading(int reading)
   printf("%d.%02d", reading / 100, reading % 100);
 }
 /*---------------------------------------------------------------------------*/
-// barometric pressure sensor
+
 static void
 get_bmp_reading()
 {
   int value;
   
-  // so basically CLOCK_SECOND * 20 + random number modulus CLOCK_SECOND << 4
+  
   clock_time_t next = SENSOR_READING_PERIOD +
     (random_rand() % SENSOR_READING_RANDOM);
 
@@ -195,13 +202,11 @@ get_bmp_reading()
   }
 
   SENSORS_DEACTIVATE(bmp_280_sensor);
-// Callback timer. Call a function when the timer expires
-// looks like passing pointer to the calledback timer, the interval i.e. next, a function to be called when the timer expires
-// last function null but could be An opaque pointer that will be supplied as an argument to the callback function.
+
   ctimer_set(&bmp_timer, next, init_bmp_reading, NULL);
 }
 /*---------------------------------------------------------------------------*/
-// temperature readings
+
 static void
 get_tmp_reading()
 {
@@ -227,7 +232,7 @@ get_tmp_reading()
   ctimer_set(&tmp_timer, next, init_tmp_reading, NULL);
 }
 /*---------------------------------------------------------------------------*/
-// Temperature and humidity
+
 static void
 get_hdc_reading()
 {
@@ -252,7 +257,7 @@ get_hdc_reading()
   ctimer_set(&hdc_timer, next, init_hdc_reading, NULL);
 }
 /*---------------------------------------------------------------------------*/
-// light readings
+
 static void
 get_light_reading()
 {
@@ -272,7 +277,6 @@ get_light_reading()
 }
 /*---------------------------------------------------------------------------*/
 
-// get all the gyro and acc. Uses previous functions defined
 static void
 get_mpu_reading()
 {
@@ -315,35 +319,35 @@ get_mpu_reading()
   ctimer_set(&mpu_timer, next, init_mpu_reading, NULL);
 }
 /*---------------------------------------------------------------------------*/
-// activate a sensor baro pressure
+
 static void
 init_bmp_reading(void *not_used)
 {
   SENSORS_ACTIVATE(bmp_280_sensor);
 }
 /*---------------------------------------------------------------------------*/
-// activate a sensor light
+
 static void
 init_opt_reading(void *not_used)
 {
   SENSORS_ACTIVATE(opt_3001_sensor);
 }
 /*---------------------------------------------------------------------------*/
-// activate a sensor humidity and temp
+
 static void
 init_hdc_reading(void *not_used)
 {
   SENSORS_ACTIVATE(hdc_1000_sensor);
 }
 /*---------------------------------------------------------------------------*/
-// activate a sensor temp
+
 static void
 init_tmp_reading(void *not_used)
 {
   SENSORS_ACTIVATE(tmp_007_sensor);
 }
 /*---------------------------------------------------------------------------*/
-// activate a larger sensor module?
+
 static void
 init_mpu_reading(void *not_used)
 {
@@ -351,7 +355,7 @@ init_mpu_reading(void *not_used)
 }
 #endif
 /*---------------------------------------------------------------------------*/
-// Get battery monitor and if we have ambient light sensor get that too
+
 static void
 get_sync_sensor_readings(void)
 {
@@ -364,6 +368,9 @@ get_sync_sensor_readings(void)
 
   value = batmon_sensor.value(BATMON_SENSOR_TYPE_VOLT);
   printf("Bat: Volt=%d mV\n", (value * 125) >> 5);
+  
+  value = adc_sensor.value(ADC_SENSOR_VALUE);
+  printf("%d mv on ADC\r\n", value);
 
 #if BOARD_SMARTRF06EB
   SENSORS_ACTIVATE(als_sensor);
@@ -377,7 +384,7 @@ get_sync_sensor_readings(void)
   return;
 }
 /*---------------------------------------------------------------------------*/
-// initialize sensors
+
 static void
 init_sensors(void)
 {
@@ -386,6 +393,7 @@ init_sensors(void)
 #endif
 
   SENSORS_ACTIVATE(batmon_sensor);
+  SENSORS_ACTIVATE(adc_sensor);
 }
 /*---------------------------------------------------------------------------*/
 static void
@@ -399,19 +407,14 @@ init_sensor_readings(void)
 
   init_mpu_reading(NULL);
 #endif
+
 }
 /*---------------------------------------------------------------------------*/
-// Then we call the PROCESS_THREAD function. This function is used to define the protothread of a process. The process is called whenever an event occurs in the system.Each process in the module requires 
-// under the PROCESS_THREAD macro.
-// name: The variable name of the process structure.
-// process_event_t: The variable of type character.If this variable is same as PROCESS_EVENT_EXIT then PROCESS_EXITHANDLER is invoked.
-// PROCESS_THREAD(name, process_event_t, process_data_t)
+
 PROCESS_THREAD(cc26xx_demo_process, ev, data)
 
 {
-// Then comes the PROCESS_BEGIN macro. This macro defines the beginning of a process, and must always appear in a PROCESS_THREAD() definition.
-// PROCESS_BEGIN() 
-//
+
   PROCESS_BEGIN();
 
   printf("CC26XX demo\n");
@@ -428,7 +431,6 @@ PROCESS_THREAD(cc26xx_demo_process, ev, data)
 
   while(1) {
 
-// yield a currently running process to this process?
     PROCESS_YIELD();
 
     if(ev == PROCESS_EVENT_TIMER) {
@@ -487,9 +489,6 @@ PROCESS_THREAD(cc26xx_demo_process, ev, data)
       }
     }
   }
-// At the end we use another macro called PROCESS_END. This macro defines the end of a process. It must appear in a PROCESS_THREAD() definition and must always be included. The process exits when the 
-// PROCESS_END() macro is reached.
-//
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/

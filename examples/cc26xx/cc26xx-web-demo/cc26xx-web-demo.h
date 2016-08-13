@@ -101,9 +101,7 @@
 /* Force an MQTT publish on sensor event */
 #define CC26XX_WEB_DEMO_MQTT_PUBLISH_TRIGGER &reed_relay_sensor
 #elif BOARD_LAUNCHPAD
-//
-//
-// Add a trigger for a PIR motion event
+
  #define CC26XX_WEB_DEMO_PIR_SENSOR_TRIGGER &pir_sensor
 //
 //
@@ -152,8 +150,10 @@
 #define CC26XX_WEB_DEMO_SENSOR_MPU_GYRO_X    12
 #define CC26XX_WEB_DEMO_SENSOR_MPU_GYRO_Y    13
 #define CC26XX_WEB_DEMO_SENSOR_MPU_GYRO_Z    14
-// add a new sensor type for the PIR sensor
 #define CC26XX_WEB_DEMO_SENSOR_PIR           15
+#define CC26XX_WEB_DEMO_SENSOR_ADC           16
+#define CC26XX_WEB_DEMO_SENSOR_UART          17
+
 /*---------------------------------------------------------------------------*/
 extern process_event_t cc26xx_web_demo_publish_event;
 extern process_event_t cc26xx_web_demo_config_loaded_event;
@@ -166,8 +166,8 @@ extern process_event_t cc26xx_web_demo_load_config_defaults;
 #define CC26XX_WEB_DEMO_UNIT_LIGHT    "lux"
 #define CC26XX_WEB_DEMO_UNIT_ACC      "G"
 #define CC26XX_WEB_DEMO_UNIT_GYRO     "deg per sec"
-// A unit of measure added for PIR motion
 #define CC26XX_WEB_DEMO_UNIT_PIR     "events"
+#define CC26XX_WEB_DEMO_UNIT_UART     "uart"
 
 /*---------------------------------------------------------------------------*/
 /* A data type for sensor readings, internally stored in a linked list */
@@ -186,6 +186,7 @@ typedef struct cc26xx_web_demo_sensor_reading {
   uint8_t changed;
   char converted[CC26XX_WEB_DEMO_CONVERTED_LEN];
 } cc26xx_web_demo_sensor_reading_t;
+
 /*---------------------------------------------------------------------------*/
 /* Global configuration */
 typedef struct cc26xx_web_demo_config_s {
@@ -231,9 +232,9 @@ int cc26xx_web_demo_ipaddr_sprintf(char *buf, uint8_t buf_len,
  */
 void cc26xx_web_demo_restore_defaults(void);
 
-// put this here so that the MQTT publish interval timer can call get_pir_motion
-// before it publishes to MQTT
 void get_pir_motion(void);
+void get_adc_reading(void);
+void get_uart_reading(void);
 /*---------------------------------------------------------------------------*/
 #endif /* CC26XX_WEB_DEMO_H_ */
 /*---------------------------------------------------------------------------*/

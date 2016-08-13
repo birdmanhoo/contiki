@@ -28,9 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /*---------------------------------------------------------------------------*/
-/**
- 
- *
+/*
  * \file
  * Header file for the HC-SR501 PIR sensor driver using GPIO pin 21
  */

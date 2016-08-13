@@ -29,20 +29,14 @@
  */
 /*---------------------------------------------------------------------------*/
 /*
- * 
- * 
- *
- * 
  * Driver for HC-SR501 PIR sensor using GPIO pin 21
  * BOARD_IOID_DIO21 = IOID_21 = 0x00000015  
  */
 /*---------------------------------------------------------------------------*/
 #include "contiki.h"
 #include "lib/sensors.h"
-//#include "launchpad/button-sensor.h" TODO
 #include "gpio-interrupt.h"
 #include "sys/timer.h"
-//#include "lpm.h"
 #include "launchpad/pir-sensor.h"
 
 #include "ti-lib.h"
@@ -98,28 +92,10 @@ static void config_pirs(int type, int c, uint32_t key)
 {
 	switch(type) {
 	case SENSORS_HW_INIT:
-/*
-ti_lib_gpio_event_clear = GPIOEventClear(uint32_t ui32Pins) which clears an 
-IO event on a pin. param ui32Pins specifies the pins to clear the events on.
-The parameter must be a bitwise OR'ed combination of the following:
-GPIO_PIN_0 - GPIO_PIN_31
-For example BOARD_IOID_KEY_LEFT = IOID_13 (in board.h) = 0x0000000D (in ioc.h) 
-in decimal 1 << 0x0000000D would be 8192 in decimal shift 1 13 times to get 
-10000000000000 so we're converting a pin number to a binary value
-*/
 	ti_lib_gpio_event_clear(1 << key);
-/*
-ti_lib_ioc_port_configure_set = IOCPortConfigureSet in ioc.h
-Set the configuration of an IO port.
-see https://github.com/g-oikonomou/cc26xxware/blob/0270b50ac750f8f3348a98f900a470e7a65ffce8/driverlib/ioc.h
-http://software-dl.ti.com/dsps/dsps_public_sw/sdo_sb/targetcontent/tirtos/2_14_01_20/exports/tirtos_full_2_14_01_20/products/cc26xxware_2_21_03_15980/doc/driverlib/group__ioc__api.html
-*/
+
 	ti_lib_ioc_port_configure_set(key, IOC_PORT_GPIO, PIR_GPIO_CFG);
-/*
-Sets the direction of the specified pin(s).
-This function will set the specified pin(s) on the GPIO port as either an input or output under software control.
-GPIODirModeSet	(uint32_t ui32Pins, uint32_t ui32Dir) 
-*/	
+	
 	ti_lib_gpio_dir_mode_set((1 << key), GPIO_DIR_MODE_IN);
 	gpio_interrupt_register_handler(key, motion_detected_handler);
     break;

@@ -90,6 +90,7 @@
 static struct uip_udp_conn *udp_conn = NULL;
 
 static uint8_t buffer[MAX_MSG_SIZE];
+
 static uint8_t msg_len;
 static uip_ip6addr_t remote_addr;
 /*---------------------------------------------------------------------------*/
@@ -274,6 +275,8 @@ PROCESS_THREAD(net_uart_process, ev, data)
     PROCESS_YIELD();
 
     if(ev == serial_line_event_message) {
+        
+        printf("~Received line: %s\n", (char *)data);
       /*
        * If the message contains a new IP address, save it and go back to
        * waiting.
@@ -281,10 +284,13 @@ PROCESS_THREAD(net_uart_process, ev, data)
       if(set_new_ip_address((char *)data) == ADDRESS_CONVERSION_ERROR) {
         /* Not an IP address in the message. Send to current destination */
         memset(buffer, 0, MAX_MSG_SIZE);
+        
+        memset(uart_reading_value, 0, MAX_MSG_SIZE);
 
         /* We need to add a line feed, thus never fill the entire buffer */
         msg_len = MIN(strlen(data), MAX_MSG_SIZE - 1);
         memcpy(buffer, data, msg_len);
+        memcpy(uart_reading_value, data, msg_len);
 
         /* Add a line feed */
         buffer[msg_len] = 0x0A;

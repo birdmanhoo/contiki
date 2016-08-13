@@ -625,7 +625,8 @@ static void
 publish(void)
 {
     get_pir_motion();
-    
+    get_adc_reading();
+    get_uart_reading();
   /* Publish MQTT topic in IBM quickstart format */
   int len;
   int remaining = APP_BUFFER_SIZE;
